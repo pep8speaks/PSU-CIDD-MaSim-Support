@@ -4,6 +4,9 @@
 #
 # This module reads an ASC file that contains the PfPR for the two to ten age
 # bracket and generates three ASC files with beta values.
+from utility import *
+from calibrationLib import *
+from ascFile import *
 import os
 import sys
 
@@ -12,16 +15,13 @@ from pathlib import Path
 # Import our libraries
 sys.path.append(os.path.join(os.path.dirname(__file__), "include"))
 
-from ascFile import *
-from calibrationLib import *
-from utility import *
 
 
 # Default path for beta values
 BETAVALUES = "data/calibration.csv"
 
 # TODO Still need a good way of supplying these
-PFPR_FILE       = "rwa_pfpr2to10.asc"
+PFPR_FILE = "rwa_pfpr2to10.asc"
 POPULATION_FILE = "rwa_population.asc"
 
 # Starting epsilon and delta to be used
@@ -32,9 +32,9 @@ MAX_EPSILON = 0.1
 def create_beta_map(configuration, gisPath):
     # Load the relevent data
     filename = os.path.join(gisPath, PFPR_FILE)
-    [ ascheader, pfpr ] = load_asc(filename)
-    filename = os.path.join(gisPath, POPULATION_FILE)    
-    [ ascheader, population ] = load_asc(filename)
+    [ascheader, pfpr] = load_asc(filename)
+    filename = os.path.join(gisPath, POPULATION_FILE)
+    [ascheader, population] = load_asc(filename)
     lookup = load_betas(BETAVALUES)
 
     # Get the ecological zone and configuration
@@ -53,14 +53,14 @@ def create_beta_map(configuration, gisPath):
 
     print("Determining betas for {} rows, {} columns".format(ascheader['nrows'], ascheader['ncols']))
 
-    # Scan each of the rows 
+    # Scan each of the rows
     for row in range(0, ascheader['nrows']):
 
         # Append the empty rows
         epsilons.append([])
         meanBeta.append([])
 
-        # Scan each of the PfPR values    
+        # Scan each of the PfPR values
         for col in range(0, ascheader['ncols']):
 
             # Append nodata and continue
@@ -86,14 +86,14 @@ def create_beta_map(configuration, gisPath):
 
             # Note the epsilon and the mean
             epsilons[row].append(epsilon)
-            if epsilon > maxEpsilon: 
+            if epsilon > maxEpsilon:
                 maxEpsilon = epsilon
                 maxValues = "PfPR: {}, Population: {}".format(pfpr[row][col], population[row][col])
             meanBeta[row].append(sum(values) / len(values))
 
         # Note the progress
         progressBar(row + 1, ascheader['nrows'])
-                
+
     # Write the results
     print("\n Max epsilon: {} / {}".format(maxEpsilon, maxValues))
     print("Epsilon Distribution")
@@ -106,15 +106,15 @@ def create_beta_map(configuration, gisPath):
     # Create the directory if need be
     if not os.path.isdir('out'): os.mkdir('out')
 
-    # Save the maps        
+    # Save the maps
     print("\nSaving {}".format('out/epsilons_beta.asc'))
     write_asc(ascheader, epsilons, 'out/epsilons_beta.asc')
     print("Saving {}".format('out/mean_beta.asc'))
     write_asc(ascheader, meanBeta, 'out/mean_beta.asc')
 
 
-# Get the beta values that generate the PfPR for the given population and 
-# treatment level, this function will start with the lowest epsilon value 
+# Get the beta values that generate the PfPR for the given population and
+# treatment level, this function will start with the lowest epsilon value
 # and increase it until at least one value is found to be returned
 def get_betas(zone, pfpr, population, treatment, lookup):
     # Initial values
@@ -132,10 +132,10 @@ def get_betas(zone, pfpr, population, treatment, lookup):
             return [None, None]
 
     # Return the results
-    return [betas, epsilon] 
+    return [betas, epsilon]
 
 
-# Get the beta values that generate the PfPR for the given population and 
+# Get the beta values that generate the PfPR for the given population and
 # treatment level, within the given margin of error.
 def get_betas_scan(zone, pfpr, population, treatment, lookup, epsilon):
 
@@ -146,12 +146,12 @@ def get_betas_scan(zone, pfpr, population, treatment, lookup, epsilon):
     # Determine the population and treatment bin we are working with
     populationBin = get_bin(population, lookup[zone].keys())
     treatmentBin = get_bin(treatment, lookup[zone][populationBin].keys())
-    
+
     # Note the bounds
     low = pfpr - epsilon
     high = pfpr + epsilon
 
-    # Scan the PfPR values for the population and treatment level that are 
+    # Scan the PfPR values for the population and treatment level that are
     # within the margin
     betas = []
     for value in lookup[zone][populationBin][treatmentBin]:
@@ -159,19 +159,19 @@ def get_betas_scan(zone, pfpr, population, treatment, lookup, epsilon):
         # Add the value if it is in the bounds
         if low <= value[0] and value[0] <= high:
             betas.append(value[1])
-            
+
         # We assume the data is stored, so break once the high value is less
         # than the current PfPR
         if high < value[0]: break
 
     # Return the betas collected
     return(betas)
-    
+
 
 # Main entry point for the script
 def main(configuration, gisPath, studyId, zeroFilter):
     cfg = load_configuration(configuration)
-    query_betas(cfg["connection_string"], studyId, zeroFilter, filename = BETAVALUES)
+    query_betas(cfg["connection_string"], studyId, zeroFilter, filename=BETAVALUES)
     create_beta_map(cfg, gisPath)
 
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     configuration = sys.argv[1]
     gisPath = str(sys.argv[2])
     studyId = int(sys.argv[3])
-    
+
     # Parse out the zero filter if one is provided, otherwise default True
     zeroFilter = True
     if len(sys.argv) == 5:
